@@ -1,4 +1,4 @@
-# Project Blackhorse - Terms & Conditions RAG Assistant
+# LegalDino - Terms & Conditions RAG Assistant
 
 A powerful RAG (Retrieval-Augmented Generation) application (on development) to transform the way users interact with and understand Terms & Conditions documents. Say goodbye to tedious reading and hello to interactive, intelligent document comprehension.
 
