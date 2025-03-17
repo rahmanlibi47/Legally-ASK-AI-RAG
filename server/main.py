@@ -1,3 +1,5 @@
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
@@ -7,6 +9,13 @@ from selenium.webdriver.support import expected_conditions as EC
 from urllib.parse import urlparse
 import time
 from llm_handler import LLMHandler
+
+app = Flask(__name__)
+CORS(app)
+
+# Global variables to store the QA chain and vector store
+qa_chain = None
+vector_store = None
 
 def setup_driver():
     chrome_options = Options()
@@ -146,57 +155,55 @@ def extract_text_from_page(driver, url):
     except Exception as e:
         return f"Error extracting text: {str(e)}"
 
-def main():
-    print("Web Scraper and LLM Assistant Started")
-    print("Enter 'quit' to exit the program")
-    print("Enter 'ask' to ask questions about scraped content")
+@app.route('/api/scrape', methods=['POST'])
+def scrape_url():
+    data = request.get_json()
+    if not data or 'url' not in data:
+        return jsonify({'error': 'URL is required'}), 400
+    
+    url = data['url']
+    if not is_valid_url(url):
+        return jsonify({'error': 'Invalid URL format'}), 400
     
     try:
         driver = setup_driver()
-        llm_handler = LLMHandler()
+        text = extract_text_from_page(driver, url)
+        driver.quit()
         
-        while True:
-            command = input("\nEnter URL to scrape or command (ask/quit): ").strip()
-            
-            if command.lower() == 'quit':
-                break
-            elif command.lower() == 'ask':
-                while True:
-                    query = input("Enter your question (or 'back' to return to main menu): ").strip()
-                    if query.lower() == 'back':
-                        break
-                    response = llm_handler.process_query(query)
-                    print("\nLLM Response:")
-                    print("-" * 50)
-                    print(response)
-                    print("-" * 50)
-                continue
-            
-            url = command
-            if not is_valid_url(url):
-                print("Invalid URL format. Please enter a valid URL.")
-                continue
-            
-            print("\nExtracting text from the webpage...")
-            text = extract_text_from_page(driver, url)
-            print("\nExtracted Text:")
-            print("-" * 50)
-            print(text)
-            print("-" * 50)
-            
-            # Add extracted text to LLM handler's vector store
-            llm_handler.add_text_to_index(text)
-            print("\nText has been processed and added to vector store.")
-            print("You can now use 'ask' to ask questions about the content.")
+        # Initialize LLM handler and process the text
+        llm_handler = LLMHandler()
+        llm_handler.add_text_to_index(text)
+        
+        return jsonify({
+            'success': True,
+            'text': text,
+            'message': 'Text has been processed and added to vector store'
+        })
     
     except Exception as e:
-        print(f"An error occurred: {str(e)}")
-    
-    finally:
         if 'driver' in locals():
             driver.quit()
-        print("\nWeb Scraper terminated.")
+        return jsonify({'error': str(e)}), 500
 
+@app.route('/api/ask', methods=['POST'])
+def ask_question():
+    data = request.get_json()
+    if not data or 'question' not in data:
+        return jsonify({'error': 'Question is required'}), 400
+    
+    try:
+        llm_handler = LLMHandler()
+        response = llm_handler.process_query(data['question'])
+        return jsonify({
+            'success': True,
+            'response': response
+        })
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
 
 if __name__ == "__main__":
     main()

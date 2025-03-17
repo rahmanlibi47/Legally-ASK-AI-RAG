@@ -5,3 +5,8 @@ alembic
 app.db
 alembic.ini
 .env
+
+
+
+#client
+node_modules
