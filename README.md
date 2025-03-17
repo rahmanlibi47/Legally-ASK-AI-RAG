@@ -62,11 +62,11 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## 📝 License
 
-...
+Libin Rahman
 
 ## ⚠️ Disclaimer
 
-This tool is designed to assist in understanding Terms & Conditions but should not be considered as legal advice. Always consult with legal professionals for important decisions.
+This tool has limited access to certain websites where bots are blocked from scraping, so please be gentle with the usage. Also it designed to assist in understanding Terms & Conditions but should not be considered as legal advice. Always consult with legal professionals for important decisions.
 
 ## 🌟 Future Enhancements
 
