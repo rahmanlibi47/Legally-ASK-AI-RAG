@@ -1,1 +1,6 @@
 venv
+instance
+__pycache__
+alembic
+app.db
+alembic.ini
