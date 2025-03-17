@@ -1,42 +1,49 @@
-from transformers import AutoTokenizer, AutoModelForCausalLM
-from sentence_transformers import SentenceTransformer
-import torch
-import numpy as np
+import requests
+import json
 
 class LLMService:
     def __init__(self):
-        self.model_path = "meta-llama/Llama-2-7b-chat-hf"
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model_path, local_files_only=True)
-        self.model = AutoModelForCausalLM.from_pretrained(
-            self.model_path,
-            torch_dtype=torch.float16,
-            device_map="auto",
-            local_files_only=True
-        )
-        self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
-
-    def get_embedding(self, text):
-        """Generate embeddings for the given text."""
-        return self.embedding_model.encode(text)
+        self.model_name = "llama3.2:latest"
+        self.api_base = "http://localhost:11434"
 
     def generate_response(self, prompt, context="", max_length=512):
         """Generate response using LLaMA model with given prompt and context."""
         full_prompt = f"Context: {context}\n\nQuestion: {prompt}\n\nAnswer:"
         
-        inputs = self.tokenizer(full_prompt, return_tensors="pt").to(self.model.device)
-        
-        with torch.no_grad():
-            outputs = self.model.generate(
-                **inputs,
-                max_length=max_length,
-                num_return_sequences=1,
-                temperature=0.7,
-                do_sample=True,
-                pad_token_id=self.tokenizer.eos_token_id
+        try:
+            response = requests.post(
+                f"{self.api_base}/api/generate",
+                json={
+                    "model": self.model_name,
+                    "prompt": full_prompt,
+                    "stream": False,
+                    "options": {
+                        "temperature": 0.7,
+                        "max_length": max_length
+                    }
+                }
             )
-        
-        response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
-        return response.split("Answer:")[-1].strip()
+            response.raise_for_status()
+            result = response.json()
+            return result['response'].strip()
+        except Exception as e:
+            return f"Error generating response: {str(e)}"
+
+    def get_embedding(self, text):
+        """Generate embeddings for the given text using Ollama's embedding endpoint."""
+        try:
+            response = requests.post(
+                f"{self.api_base}/api/embeddings",
+                json={
+                    "model": self.model_name,
+                    "prompt": text
+                }
+            )
+            response.raise_for_status()
+            result = response.json()
+            return result['embedding']
+        except Exception as e:
+            return f"Error generating embedding: {str(e)}"
 
     def chunk_text(self, text, chunk_size=512):
         """Split text into chunks for processing."""
@@ -53,10 +60,10 @@ class LLMService:
                 current_length = len(word)
             else:
                 current_chunk.append(word)
-                
+        
         if current_chunk:
             chunks.append(' '.join(current_chunk))
-            
+        
         return chunks
 
 # Initialize LLM service as a singleton

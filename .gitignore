@@ -4,3 +4,4 @@ __pycache__
 alembic
 app.db
 alembic.ini
+.env

@@ -6,6 +6,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from urllib.parse import urlparse
 import time
+from llm_handler import LLMHandler
 
 def setup_driver():
     chrome_options = Options()
@@ -146,18 +147,32 @@ def extract_text_from_page(driver, url):
         return f"Error extracting text: {str(e)}"
 
 def main():
-    print("Web Scraper Started")
+    print("Web Scraper and LLM Assistant Started")
     print("Enter 'quit' to exit the program")
+    print("Enter 'ask' to ask questions about scraped content")
     
     try:
         driver = setup_driver()
+        llm_handler = LLMHandler()
         
         while True:
-            url = input("\nEnter the URL to scrape: ").strip()
+            command = input("\nEnter URL to scrape or command (ask/quit): ").strip()
             
-            if url.lower() == 'quit':
+            if command.lower() == 'quit':
                 break
+            elif command.lower() == 'ask':
+                while True:
+                    query = input("Enter your question (or 'back' to return to main menu): ").strip()
+                    if query.lower() == 'back':
+                        break
+                    response = llm_handler.process_query(query)
+                    print("\nLLM Response:")
+                    print("-" * 50)
+                    print(response)
+                    print("-" * 50)
+                continue
             
+            url = command
             if not is_valid_url(url):
                 print("Invalid URL format. Please enter a valid URL.")
                 continue
@@ -168,6 +183,11 @@ def main():
             print("-" * 50)
             print(text)
             print("-" * 50)
+            
+            # Add extracted text to LLM handler's vector store
+            llm_handler.add_text_to_index(text)
+            print("\nText has been processed and added to vector store.")
+            print("You can now use 'ask' to ask questions about the content.")
     
     except Exception as e:
         print(f"An error occurred: {str(e)}")
@@ -176,6 +196,7 @@ def main():
         if 'driver' in locals():
             driver.quit()
         print("\nWeb Scraper terminated.")
+
 
 if __name__ == "__main__":
     main()
