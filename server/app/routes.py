@@ -41,47 +41,6 @@ def process_document():
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
-@main_bp.route('/ask', methods=['POST'])
-def ask_question():
-    data = request.get_json()
-    if not data or 'question' not in data:
-        return jsonify({'error': 'Question is required'}), 400
-
-    try:
-        # Get question embedding
-        question_embedding = llm_service.get_embedding(data['question'])
-
-        # Find most relevant chunks
-        chunks = DocumentChunk.query.all()
-        similarities = []
-        for chunk in chunks:
-            similarity = np.dot(question_embedding, chunk.embedding)
-            similarities.append((similarity, chunk))
-
-        # Sort by similarity and get top chunks
-        similarities.sort(key=lambda x: x[0], reverse=True)
-        top_chunks = [chunk.content for _, chunk in similarities[:3]]
-        context = '\n'.join(top_chunks)
-
-        # Generate response
-        answer = llm_service.generate_response(data['question'], context)
-
-        # Save to chat history
-        chat_history = ChatHistory(
-            question=data['question'],
-            answer=answer,
-            context=context
-        )
-        db.session.add(chat_history)
-        db.session.commit()
-
-        return jsonify({
-            'answer': answer,
-            'context': context
-        })
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
 
 @main_bp.route('/chat_history', methods=['GET'])
 def get_chat_history():

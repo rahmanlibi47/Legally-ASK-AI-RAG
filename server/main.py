@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Blueprint
 from flask_cors import CORS
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -9,8 +9,17 @@ from selenium.webdriver.support import expected_conditions as EC
 from urllib.parse import urlparse
 import time
 from llm_handler import LLMHandler
+from app.models import db, Document, DocumentChunk, ChatHistory    
+from app.llm import llm_service
+from app import create_app
+import numpy as np
 
-app = Flask(__name__)
+
+
+main_bp = Blueprint('main', __name__)
+
+
+app = create_app()
 CORS(app)
 
 # Global variables to store the QA chain and vector store
@@ -185,25 +194,50 @@ def scrape_url():
             driver.quit()
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/ask', methods=['POST'])
+@app.route('/ask', methods=['POST'])
 def ask_question():
+    print("started")
     data = request.get_json()
     if not data or 'question' not in data:
         return jsonify({'error': 'Question is required'}), 400
-    
+
     try:
-        llm_handler = LLMHandler()
-        response = llm_handler.process_query(data['question'])
+        # Get question embedding
+        question_embedding = llm_service.get_embedding(data['question'])
+
+        # Find most relevant chunks
+        chunks = DocumentChunk.query.all()
+        similarities = []
+        for chunk in chunks:
+            similarity = np.dot(question_embedding, chunk.embedding)
+            similarities.append((similarity, chunk))
+
+        # Sort by similarity and get top chunks
+        similarities.sort(key=lambda x: x[0], reverse=True)
+        print(similarities, 'similarities')
+        top_chunks = [chunk.content for _, chunk in similarities[:3]]
+        
+        context = '\n'.join(top_chunks)
+
+        # Generate response
+        answer = llm_service.generate_response(data['question'], context)
+
+        # Save to chat history
+        chat_history = ChatHistory(
+            question=data['question'],
+            answer=answer,
+            context=context
+        )
+        db.session.add(chat_history)
+        db.session.commit()
+
         return jsonify({
-            'success': True,
-            'response': response
+            'answer': answer,
+            'context': context
         })
-    
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
-
-if __name__ == "__main__":
-    main()
+    app.run(host='0.0.0.0', port=5000, debug=True)
