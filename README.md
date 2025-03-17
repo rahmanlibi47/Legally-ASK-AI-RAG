@@ -1,4 +1,4 @@
-# Project Blackhorse - Terms & Conditions RAG Assistant
+# Legal-Dino AI - Terms & Conditions RAG Assistant
 
 A powerful RAG (Retrieval-Augmented Generation) application (on development) to transform the way users interact with and understand Terms & Conditions documents. Say goodbye to tedious reading and hello to interactive, intelligent document comprehension.
 
@@ -62,11 +62,11 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## 📝 License
 
-...
+Libin Rahman
 
 ## ⚠️ Disclaimer
 
-This tool is designed to assist in understanding Terms & Conditions but should not be considered as legal advice. Always consult with legal professionals for important decisions.
+This tool has limited access to certain websites where bots are blocked from scraping, so please be gentle with the usage. Also it designed to assist in understanding Terms & Conditions but should not be considered as legal advice. Always consult with legal professionals for important decisions.
 
 ## 🌟 Future Enhancements
 
