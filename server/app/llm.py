@@ -1,47 +1,43 @@
-import requests
-import json
+import os
+from google.generativeai import GenerativeModel
+from sentence_transformers import SentenceTransformer
+import google.generativeai as genai
+from dotenv import load_dotenv
+load_dotenv()
 
 class LLMService:
     def __init__(self):
-        self.model_name = "llama3.2:latest"
-        self.api_base = "http://localhost:11434"
+        # Initialize Google Generative AI with API key
+        api_key = os.getenv('GEMINI_API_KEY')
+        if not api_key:
+            raise ValueError("GEMINI_API_KEY environment variable not set")
+        
+        genai.configure(api_key=api_key)
+        self.model = GenerativeModel('gemini-2.0-flash')
+        self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
 
     def generate_response(self, prompt, context="", max_length=512):
-        """Generate response using LLaMA model with given prompt and context."""
+        """Generate response using Gemini model with given prompt and context."""
         full_prompt = f"Context: {context}\n\nQuestion: {prompt}\n\nAnswer:"
         
         try:
-            response = requests.post(
-                f"{self.api_base}/api/generate",
-                json={
-                    "model": self.model_name,
-                    "prompt": full_prompt,
-                    "stream": False,
-                    "options": {
-                        "temperature": 0.7,
-                        "max_length": max_length
-                    }
+            response = self.model.generate_content(
+                full_prompt,
+                generation_config={
+                    'max_output_tokens': max_length,
+                    'temperature': 0.7
                 }
             )
-            response.raise_for_status()
-            result = response.json()
-            return result['response'].strip()
+            return response.text.strip()
         except Exception as e:
             return f"Error generating response: {str(e)}"
 
     def get_embedding(self, text):
-        """Generate embeddings for the given text using Ollama's embedding endpoint."""
+        """Generate embeddings for the given text using SentenceTransformer."""
         try:
-            response = requests.post(
-                f"{self.api_base}/api/embeddings",
-                json={
-                    "model": self.model_name,
-                    "prompt": text
-                }
-            )
-            response.raise_for_status()
-            result = response.json()
-            return result['embedding']
+            # Generate embeddings using SentenceTransformer
+            embedding = self.embedding_model.encode(text)
+            return embedding.tolist()
         except Exception as e:
             return f"Error generating embedding: {str(e)}"
 

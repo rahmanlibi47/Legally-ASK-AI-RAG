@@ -179,19 +179,39 @@ def scrape_url():
         text = extract_text_from_page(driver, url)
         driver.quit()
         
-        # Initialize LLM handler and process the text
-        llm_handler = LLMHandler()
-        llm_handler.add_text_to_index(text)
+        # Create new document with the scraped text
+        document = Document(
+            url=url,
+            content=text,
+            embedding=llm_service.get_embedding(text)
+        )
+        db.session.add(document)
+        db.session.flush()
+
+        # Process document chunks
+        chunks = llm_service.chunk_text(text)
+        for idx, chunk in enumerate(chunks):
+            chunk_embedding = llm_service.get_embedding(chunk)
+            doc_chunk = DocumentChunk(
+                document_id=document.id,
+                content=chunk,
+                embedding=chunk_embedding,
+                chunk_index=idx
+            )
+            db.session.add(doc_chunk)
+
+        db.session.commit()
         
         return jsonify({
             'success': True,
             'text': text,
-            'message': 'Text has been processed and added to vector store'
+            'message': 'Text has been processed and stored in the database'
         })
     
     except Exception as e:
         if 'driver' in locals():
             driver.quit()
+        db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
 @app.route('/ask', methods=['POST'])

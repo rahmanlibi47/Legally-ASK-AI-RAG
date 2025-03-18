@@ -63,7 +63,7 @@ function App() {
         throw new Error(data.error || 'Failed to get answer')
       }
 
-      setAnswer(data.response)
+      setAnswer(data.answer)
       setQuestion('')
     } catch (err) {
       setError(err.message)
