@@ -5,8 +5,8 @@ from llm_handler import LLMHandler
 from app.models import db, Document, DocumentChunk, ChatHistory    
 from app.llm import llm_service
 from app import create_app
+from langchain.document_loaders import WebBaseLoader
 import numpy as np
-
 
 main_bp = Blueprint('main', __name__)
 
@@ -36,7 +36,6 @@ def scrape_url():
         return jsonify({'error': 'Invalid URL format'}), 400
     
     try:
-        from langchain.document_loaders import WebBaseLoader
         loader = WebBaseLoader(url)
         docs = loader.load()
         text = docs[0].page_content if docs else ""
@@ -103,13 +102,13 @@ def ask_question():
         answer = llm_service.generate_response(data['question'], context)
 
         # Save to chat history
-        chat_history = ChatHistory(
-            question=data['question'],
-            answer=answer,
-            context=context
-        )
-        db.session.add(chat_history)
-        db.session.commit()
+        # chat_history = ChatHistory(
+        #     question=data['question'],
+        #     answer=answer,
+        #     context=context
+        # )
+        # db.session.add(chat_history)
+        # db.session.commit()
 
         return jsonify({
             'answer': answer,

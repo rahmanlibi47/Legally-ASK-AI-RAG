@@ -1,84 +1,121 @@
-import { useState } from 'react'
-import './App.css'
+import { useState, useEffect } from "react";
+import "./App.css";
 
 function App() {
-  const [url, setUrl] = useState('')
-  const [question, setQuestion] = useState('')
-  const [answer, setAnswer] = useState('')
-  const [error, setError] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [isInitialized, setIsInitialized] = useState(false)
-  const [scrapedText, setScrapedText] = useState('')
+  const [url, setUrl] = useState("");
+  const [question, setQuestion] = useState("");
+  const [answer, setAnswer] = useState("");
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [scrapedText, setScrapedText] = useState("");
+  const [chatHistory, setChatHistory] = useState([]);
+
+  useEffect(() => {
+    fetchChatHistory();
+  }, []);
+
+  const fetchChatHistory = async () => {
+    try {
+      const response = await fetch("http://localhost:5000/chat_history");
+      const data = await response.json();
+      setChatHistory(data);
+    } catch (err) {
+      console.error("Failed to fetch chat history:", err);
+    }
+  };
+
+  const formatText = (text) => {
+    // Format bold text
+    let formattedText = text.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+
+    // Format bullet points (both - and * prefixes)
+    formattedText = formattedText
+      .split("\n")
+      .map((line) => {
+        if (line.trim().startsWith("- ") || line.trim().startsWith("* ")) {
+          return `<li>${line.trim().substring(2)}</li>`;
+        }
+        return line;
+      })
+      .join("\n");
+
+    return formattedText;
+  };
 
   const handleUrlSubmit = async (e) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError('')
-    setScrapedText('')
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
+    setScrapedText("");
 
     try {
-      const response = await fetch('http://localhost:5000/api/scrape', {
-        method: 'POST',
+      const response = await fetch("http://localhost:5000/api/scrape", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ url }),
-      })
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to scrape URL')
+        throw new Error(data.error || "Failed to scrape URL");
       }
 
-      setScrapedText(data.text)
-      setIsInitialized(true)
-      setUrl('')
+      setScrapedText(data.text);
+      setIsInitialized(true);
+      setUrl("");
     } catch (err) {
-      setError(err.message)
+      setError(err.message);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleQuestionSubmit = async (e) => {
-    e.preventDefault()
-    if (!question.trim()) return
-    
-    setIsLoading(true)
-    setError('')
+    e.preventDefault();
+    if (!question.trim()) return;
+
+    setIsLoading(true);
+    setError("");
 
     try {
-      const response = await fetch('http://localhost:5000/ask', {
-        method: 'POST',
+      const response = await fetch("http://localhost:5000/ask", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ question }),
-      })
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to get answer')
+        throw new Error(data.error || "Failed to get answer");
       }
 
-      setAnswer(data.answer)
-      setQuestion('')
+      setAnswer(data.answer);
+      setQuestion("");
+      fetchChatHistory(); // Refresh chat history after new question
     } catch (err) {
-      setError(err.message)
+      setError(err.message);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <div className="container">
-      <h1>Terms & Conditions Analyzer</h1>
-      
+      <center>
+        {" "}
+        <h1>LegallyAsk AI</h1>
+        <h5>Know what you are agreeing to !!!</h5>
+      </center>
+
       {!isInitialized ? (
         <div className="url-form">
-          <h2>Enter Website URL</h2>
           <form onSubmit={handleUrlSubmit}>
             <input
               type="url"
@@ -88,7 +125,7 @@ function App() {
               required
             />
             <button type="submit" disabled={isLoading}>
-              {isLoading ? 'Processing...' : 'Analyze'}
+              {isLoading ? "Processing..." : "Analyze"}
             </button>
           </form>
         </div>
@@ -96,13 +133,10 @@ function App() {
         <div className="chat-interface">
           <div className="scraped-content">
             <h3>Scraped Content</h3>
-            <div className="text-container">
-              {scrapedText}
-            </div>
+            <div className="text-container">{scrapedText}</div>
           </div>
-          
-          <div className="qa-section">
-            <h3>Ask Questions</h3>
+
+          <div className="chat-section">
             <form onSubmit={handleQuestionSubmit}>
               <input
                 type="text"
@@ -112,23 +146,23 @@ function App() {
                 required
               />
               <button type="submit" disabled={isLoading}>
-                {isLoading ? 'Processing...' : 'Ask'}
+                {isLoading ? "Processing..." : "Ask"}
               </button>
             </form>
-            
+
+            {error && <div className="error">{error}</div>}
+
             {answer && (
               <div className="answer">
-                <h4>Answer:</h4>
-                <p>{answer}</p>
+                <h3>Answer:</h3>
+                <div dangerouslySetInnerHTML={{ __html: formatText(answer) }} />
               </div>
             )}
           </div>
         </div>
       )}
-
-      {error && <div className="error">{error}</div>}
     </div>
-  )
+  );
 }
 
-export default App
+export default App;

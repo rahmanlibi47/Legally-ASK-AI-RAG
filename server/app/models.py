@@ -15,10 +15,12 @@ class Document(db.Model):
 class ChatHistory(db.Model):
     __tablename__ = 'chat_history'
     id = Column(Integer, primary_key=True)
+    document_id = Column(Integer, ForeignKey('document.id'), nullable=False)
     question = Column(Text, nullable=False)
     answer = Column(Text, nullable=False)
     context = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
+    document = relationship('Document', backref='chat_history')
 
 class DocumentChunk(db.Model):
     __tablename__ = 'document_chunk'
