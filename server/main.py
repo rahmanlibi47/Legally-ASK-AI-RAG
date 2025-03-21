@@ -75,7 +75,7 @@ def scrape_url():
 
 @app.route('/ask', methods=['POST'])
 def ask_question():
-    print("started")
+    # print("started")
     data = request.get_json()
     if not data or 'question' not in data:
         return jsonify({'error': 'Question is required'}), 400
@@ -93,7 +93,7 @@ def ask_question():
 
         # Sort by similarity and get top chunks
         similarities.sort(key=lambda x: x[0], reverse=True)
-        print(similarities, 'similarities')
+        # print(similarities, 'similarities')
         top_chunks = [chunk.content for _, chunk in similarities[:3]]
         
         context = '\n'.join(top_chunks)
