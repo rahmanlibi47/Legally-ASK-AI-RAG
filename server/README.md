@@ -20,7 +20,7 @@ cd server
 ```bash
 python -m venv venv
 .\venv\Scripts\activate  # On Windows
-source venv/bin/activate  # On Unix or MacOS
+source venv/bin/activate  
 ```
 
 3. Install the required packages:
