@@ -2,7 +2,7 @@ venv
 instance
 __pycache__
 alembic
-app.db
+migrations
 .env
 
 
