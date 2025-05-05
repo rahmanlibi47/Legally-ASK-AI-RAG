@@ -1,12 +1,11 @@
 from flask import Flask, request, jsonify, Blueprint
 from flask_cors import CORS
 from urllib.parse import urlparse
-from llm_handler import LLMHandler
 from app.models import db, Document, DocumentChunk, ChatHistory    
 from app.llm import llm_service
 from app import create_app
-from langchain.document_loaders import WebBaseLoader
 import numpy as np
+
 
 main_bp = Blueprint('main', __name__)
 
@@ -36,15 +35,28 @@ def scrape_url():
         return jsonify({'error': 'Invalid URL format'}), 400
     
     try:
+        from langchain.document_loaders import WebBaseLoader
         loader = WebBaseLoader(url)
         docs = loader.load()
         text = docs[0].page_content if docs else ""
-        
+        # Get embedding for full document
+        # Get and validate embedding for full document
+        embedding_result = llm_service.get_embedding(text)
+        if embedding_result is None:
+            raise ValueError("Failed to generate embedding for the main document")
+
+        if isinstance(embedding_result, list):  # convert it safely to array
+            embedding_array = np.array(embedding_result, dtype=np.float32)
+        else:
+            embedding_array = embedding_result  # assume it's already a NumPy array
+
+        embedding_bytes = embedding_array.tobytes()
+
         # Create new document with the scraped text
         document = Document(
             url=url,
             content=text,
-            embedding=llm_service.get_embedding(text)
+            embedding=embedding_bytes
         )
         db.session.add(document)
         db.session.flush()
@@ -52,7 +64,17 @@ def scrape_url():
         # Process document chunks
         chunks = llm_service.chunk_text(text)
         for idx, chunk in enumerate(chunks):
-            chunk_embedding = llm_service.get_embedding(chunk)
+            chunk_result = llm_service.get_embedding(chunk)
+            if chunk_result is None:
+                raise ValueError(f"Failed to generate embedding for chunk {idx}")
+
+            if isinstance(chunk_result, list):
+                chunk_array = np.array(chunk_result, dtype=np.float32)
+            else:
+                chunk_array = chunk_result
+
+            chunk_embedding = chunk_array.tobytes()
+
             doc_chunk = DocumentChunk(
                 document_id=document.id,
                 content=chunk,
@@ -60,6 +82,7 @@ def scrape_url():
                 chunk_index=idx
             )
             db.session.add(doc_chunk)
+
 
         db.session.commit()
         
@@ -75,25 +98,34 @@ def scrape_url():
 
 @app.route('/ask', methods=['POST'])
 def ask_question():
-    # print("started")
+    print("started")
     data = request.get_json()
     if not data or 'question' not in data:
         return jsonify({'error': 'Question is required'}), 400
 
     try:
         # Get question embedding
-        question_embedding = llm_service.get_embedding(data['question'])
+        print("Question embedding start")
+        question_embedding = np.array(llm_service.get_embedding(data['question']))
 
         # Find most relevant chunks
         chunks = DocumentChunk.query.all()
         similarities = []
+        print("Similars", similarities)
         for chunk in chunks:
-            similarity = np.dot(question_embedding, chunk.embedding)
+            if isinstance(chunk.embedding, list):
+                # This shouldn't happen — maybe bad legacy data?
+                raise ValueError(f"Chunk {chunk.id} has list-type embedding instead of bytes")
+
+            chunk_embedding = np.frombuffer(chunk.embedding, dtype=np.float32)
+            similarity = np.dot(question_embedding, chunk_embedding)
             similarities.append((similarity, chunk))
 
+
+        print(similarities, 'similarities')
         # Sort by similarity and get top chunks
         similarities.sort(key=lambda x: x[0], reverse=True)
-        # print(similarities, 'similarities')
+       
         top_chunks = [chunk.content for _, chunk in similarities[:3]]
         
         context = '\n'.join(top_chunks)
@@ -102,13 +134,13 @@ def ask_question():
         answer = llm_service.generate_response(data['question'], context)
 
         # Save to chat history
-        # chat_history = ChatHistory(
-        #     question=data['question'],
-        #     answer=answer,
-        #     context=context
-        # )
-        # db.session.add(chat_history)
-        # db.session.commit()
+        chat_history = ChatHistory(
+            question=data['question'],
+            answer=answer,
+            context=context
+        )
+        db.session.add(chat_history)
+        db.session.commit()
 
         return jsonify({
             'answer': answer,
