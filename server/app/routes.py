@@ -17,7 +17,7 @@ def process_document():
         document = Document(
             url=data['url'],
             content=data['content'],
-            embedding=llm_service.get_embedding(data['content'])
+            embedding=np.array(llm_service.get_embedding(data['content'])).tobytes()
         )
         db.session.add(document)
         db.session.flush()
@@ -25,7 +25,7 @@ def process_document():
         # Process document chunks
         chunks = llm_service.chunk_text(data['content'])
         for idx, chunk in enumerate(chunks):
-            chunk_embedding = llm_service.get_embedding(chunk)
+            chunk_embedding = np.array(llm_service.get_embedding(chunk)).tobytes()
             doc_chunk = DocumentChunk(
                 document_id=document.id,
                 content=chunk,
