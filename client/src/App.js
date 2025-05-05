@@ -119,7 +119,30 @@ function App() {
             {answer && (
               <div className="answer">
                 <h4>Answer:</h4>
-                <p>{answer}</p>
+                <div>
+                  {answer.split(/\n/).map((line, lineIndex) => {
+                    const isListItem = line.trim().startsWith('*');
+                    const processedLine = isListItem ? line.trim().substring(1).trim() : line;
+                    return (
+                      <p key={lineIndex} style={{ marginBottom: '1rem' }}>
+                        {isListItem ? (
+                          <span style={{ display: 'flex', alignItems: 'flex-start' }}>
+                            <span style={{ marginRight: '0.5rem' }}>•</span>
+                            <span>
+                              {processedLine.split(/\*\*(.+?)\*\*/g).map((part, index) => (
+                                index % 2 === 0 ? part : <strong key={index}>{part}</strong>
+                              ))}
+                            </span>
+                          </span>
+                        ) : (
+                          processedLine.split(/\*\*(.+?)\*\*/g).map((part, index) => (
+                            index % 2 === 0 ? part : <strong key={index}>{part}</strong>
+                          ))
+                        )}
+                      </p>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </div>

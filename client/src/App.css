@@ -70,6 +70,7 @@ button:disabled {
 }
 
 .scraped-content, .qa-section {
+  max-width: 550px;
   background-color: #f8fafc;
   padding: 1.5rem;
   border-radius: 0.75rem;
